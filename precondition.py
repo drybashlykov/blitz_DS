@@ -4,11 +4,14 @@ from pprint import pprint
 import ffmpeg
 import sys
 import matplotlib.pyplot as plt
+from IPython.display import clear_output
 
 cutoff_up = 0
 cutoff_down = 272
-cutoff_left = 276
+cutoff_left = 277
 cutoff_right = 552
+height = cutoff_down - cutoff_up
+width = cutoff_right - cutoff_left
 
 def count_frames(filename):
     counter = 0
@@ -82,13 +85,15 @@ def find_battle_start(filename, threshold = 0.2):
         ROI_hsv = cv2.cvtColor(ROI, cv2.COLOR_BGR2HSV)
         hue_hist = cv2.calcHist(ROI_hsv, [0], None, histSize, ranges)
         similarity = cv2.compareHist(hue_hist, ref_hue_hist, method = 0)
+    cap.read()
+    counter += 1
     print("Battle start frame: ", counter)
     return cap
 
 def cut_first_minute(filename):
     cap = find_battle_start(filename)
     n_frames = 60 * 23
-    sequence = np.zeros((cap.shape[0], cap.shape[1], 3, n_frames), dtype = np.uint8)
+    sequence = np.zeros((height, width, 3, n_frames), dtype = np.uint8)
     for i in range(60 * 23):
         _, frame = cap.read()
         sequence[:,:,:,i] = frame[cutoff_up:cutoff_down, cutoff_left:cutoff_right, :]
@@ -97,10 +102,14 @@ def cut_first_minute(filename):
     cv2.destroyAllWindows()
     return sequence
 
-def play_sequence(seq):
-    n_frames = seq.shape[-1]
+def play_sequence(seq, grayscale = False):
+    if len(seq.shape) == 3:
+        playable = np.repeat(np.expand_dims(seq, axis = 2), 3, axis = 2)
+    else:
+        playable = seq
+    n_frames = playable.shape[-1]
     for i in range(n_frames):
-        cv2.imshow("sequence", seq[:,:,:,i])
+        cv2.imshow("sequence", playable[:,:,:,i])
         if cv2.waitKey(25) & 0xFF == ord('q'):
             break
     cv2.destroyAllWindows()
