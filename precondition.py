@@ -103,13 +103,9 @@ def cut_first_minute(filename):
     return sequence
 
 def play_sequence(seq, grayscale = False):
-    if len(seq.shape) == 3:
-        playable = np.repeat(np.expand_dims(seq, axis = 2), 3, axis = 2)
-    else:
-        playable = seq
-    n_frames = playable.shape[-1]
+    n_frames = seq.shape[-1]
     for i in range(n_frames):
-        cv2.imshow("sequence", playable[:,:,:,i])
+        cv2.imshow("sequence", seq[:,:,:,i])
         if cv2.waitKey(25) & 0xFF == ord('q'):
             break
     cv2.destroyAllWindows()
