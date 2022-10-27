@@ -66,10 +66,31 @@ def color_clusters(frame, n = 6):
     return res
 
 def initial_clusters(frame, n = 6):
-    coords = np.transpose(np.where(frame[:,:,0] > 200))
-    k_means = KMeans(init='k-means++', n_clusters=n, n_init=10)
-    k_means.fit(coords)
-    return k_means.cluster_centers_
+    N, CA = connected_areas(frame[:,:,0])
+    n_tanks = np.zeros(N, dtype = int)
+    size_threshold = 200
+    for i in range(N):
+        upper_bound, lower_bound = np.quantile(np.where(CA == i)[0], [0.05, 0.95])
+        left_bound, right_bound = np.quantile(np.where(CA == i)[1], [0.05, 0.95])
+        size = (upper_bound - lower_bound) * (left_bound - right_bound)
+    if size < size_threshold:
+        n_tanks[i] = 1
+    #print(i, size)
+    centroids = []
+    for i in range(N):
+        if n_tanks[i] == 0:
+            n_tanks[i] = int(6 - n_tanks.sum()/(n_tanks == 0).sum())
+            print(n_tanks[i])
+            coords = np.transpose(np.where(CA == i))
+            k_means = KMeans(init='k-means++', n_clusters=n_tanks[i], n_init=10)
+            k_means.fit(coords)
+            # for j in range(n_tanks[i]):
+            #     centroids.append(k_means.cluster_centers_[j])
+            centroids += [[x, y] for x, y in k_means.cluster_centers_]
+        else:
+            centroids.append(np.array(np.where(CA == i)).mean(axis = 1))
+    centroids = np.array(centroids)
+    return centroids
 
 def find_clusters(frame, init_centers, n = 6):
     coords = np.transpose(np.where(frame[:,:,0] > 200))
@@ -84,8 +105,44 @@ def find_clusters(frame, init_centers, n = 6):
 
 def clusters_sequence(seq, n = 6):
     res_seq = np.zeros_like(seq)
-    centers = initial_clusters(seq[:,:,:,0])
+    centers = initial_clusters(seq[:,:,:,10])
     for i in range(seq.shape[-1]):
         centers, res_frame = find_clusters(seq[:,:,:,i], centers)
         res_seq[:,:,:,i] = res_frame
     return res_seq
+
+def is_in(array, coords):
+    for i in range(array.shape[0]):
+        if (coords == array[i]).all():
+            return True
+    return False
+
+def connected_areas(T):
+    x_max = T.shape[0]
+    y_max = T.shape[1]
+    all_points = np.transpose(np.where(T))
+    area_map = -1 * np.ones_like(T)
+    counter = 0
+    counter_complexity = 0
+    for x, y in all_points:
+        counter_complexity += 1
+        if area_map[x, y] == -1:
+            q = []
+            visited = np.zeros((x_max, y_max)).astype(bool)
+            visited[x, y] = True
+            q.append((x, y))
+            while q:
+                cur_x, cur_y = q.pop()
+                for dx, dy in [(+1, 0), (-1, 0), (0, +1), (0, -1)]:
+                    next_x = cur_x + dx
+                    next_y = cur_y + dy
+                    if next_x >= 0 and next_y >= 0 and next_x < x_max and next_y < y_max\
+                        and is_in(all_points, [next_x, next_y]) and visited[next_x, next_y] == False:
+                        visited[next_x, next_y] = True
+                        q.append((next_x, next_y))
+
+            area_map[visited] = counter
+            #print("cluster ", counter)
+            counter += 1
+    #print("counter_complexity: ", counter_complexity)
+    return counter, area_map
