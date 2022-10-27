@@ -8,8 +8,8 @@ from IPython.display import clear_output
 
 cutoff_up = 0
 cutoff_down = 272
-cutoff_left = 277
-cutoff_right = 552
+cutoff_left = 279
+cutoff_right = 551
 height = cutoff_down - cutoff_up
 width = cutoff_right - cutoff_left
 
@@ -63,7 +63,7 @@ def get_similarity(filename):
     cap.release()
     return hue_similarities
 
-def find_battle_start(filename, threshold = 0.2):
+def find_minimap_start(filename, threshold = 0.2):
     bins = 60
     histSize = [bins]
     ranges = [0, 255]
@@ -91,7 +91,7 @@ def find_battle_start(filename, threshold = 0.2):
     return cap
 
 def cut_first_minute(filename):
-    cap = find_battle_start(filename)
+    cap = find_minimap_start(filename)
     n_frames = 60 * 23
     sequence = np.zeros((height, width, 3, n_frames), dtype = np.uint8)
     for i in range(60 * 23):
